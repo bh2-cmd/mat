@@ -322,7 +322,8 @@ export default function AssessmentQuestions({ onComplete, onClose }: AssessmentQ
 
   const handleProceedToAssessment = async () => {
     await sendScoreToAPI(finalScore);
-    onComplete(finalScore);
+    // Navigate to detailed results instead of just completing
+    window.location.href = '/assessment-results';
   };
 
   const calculateScore = (answers: Record<string, string>): number => {

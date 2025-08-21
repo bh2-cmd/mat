@@ -180,6 +180,7 @@ function LandingPage() {
 
   const handleConnectedAssessmentStart = () => {
     setShowConnectedAssessment(false);
+    // Pass assessment type to chatbot
     setShowChatbot(true);
   };
 
@@ -258,6 +259,7 @@ function LandingPage() {
 
   const handleFileUploadStartAssessment = () => {
     setShowFileUpload(false);
+    // Pass assessment type to chatbot
     setShowChatbot(true);
   };
 
@@ -447,11 +449,29 @@ function LandingPage() {
   }
 
   if (showChatbot) {
+    // Determine assessment type based on current flow
+    let assessmentType: 'connected' | 'manual' | 'automated' = 'manual';
+    let shouldReset = false;
+    
+    if (premiumAssessmentType === 'connected') {
+      assessmentType = 'connected';
+    } else if (managementType === 'automated') {
+      assessmentType = 'automated';
+      shouldReset = true; // Always reset for automated
+    } else {
+      assessmentType = 'manual';
+      shouldReset = true; // Always reset for manual
+    }
+    
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
         <div className="w-full h-full flex items-center justify-center">
           <div className="w-full max-w-4xl h-[90vh] flex items-center justify-center">
-            <ChatbotWidget forceOpen />
+            <ChatbotWidget 
+              forceOpen 
+              assessmentType={assessmentType}
+              shouldResetSession={shouldReset}
+            />
           </div>
         </div>
       </div>
