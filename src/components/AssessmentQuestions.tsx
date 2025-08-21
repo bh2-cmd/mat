@@ -218,6 +218,7 @@ export default function AssessmentQuestions({ onComplete, onClose }: AssessmentQ
   const [showScore, setShowScore] = useState(false);
   const [finalScore, setFinalScore] = useState<number>(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showDetailedResults, setShowDetailedResults] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentDomainInfo = domains.find(d => d.name === currentQuestion?.domain);
@@ -322,8 +323,139 @@ export default function AssessmentQuestions({ onComplete, onClose }: AssessmentQ
 
   const handleProceedToAssessment = async () => {
     await sendScoreToAPI(finalScore);
-    // Navigate to detailed results instead of just completing
-    window.location.href = '/assessment-results';
+    // Create a detailed results page instead of just completing
+    setShowDetailedResults(true);
+  };
+
+  const renderDetailedResults = () => {
+    const percentage = (finalScore / 120) * 100;
+    const scoreOutOf20 = (finalScore / 6).toFixed(1);
+    
+    // Calculate domain scores
+    const domainScores = domains.map(domain => {
+      const domainQuestions = questions.filter(q => q.domain === domain.name);
+      let domainScore = 0;
+      domainQuestions.forEach(q => {
+        const answer = answers[q.id];
+        const optionIndex = q.options.indexOf(answer);
+        if (optionIndex === 0) domainScore += 1;
+        else if (optionIndex === 1) domainScore += 2;
+        else if (optionIndex === 2) domainScore += 4;
+        else if (optionIndex === 3) domainScore += 4;
+      });
+      
+      const maxDomainScore = domainQuestions.length * 4;
+      const domainPercentage = (domainScore / maxDomainScore) * 100;
+      
+      return {
+        ...domain,
+        score: domainScore,
+        maxScore: maxDomainScore,
+        percentage: domainPercentage
+      };
+    });
+    
+    return (
+      <div className="fixed inset-0 bg-gray-900 bg-opacity-95 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-t-2xl border-b border-gray-100">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                Detailed Assessment Results
+              </h1>
+              <div className="text-6xl font-bold mb-4">
+                <span className="text-blue-600">{scoreOutOf20}</span>
+                <span className="text-gray-400">/20</span>
+              </div>
+              <p className="text-lg text-gray-600 mb-2">
+                Overall Cloud Maturity Score: {percentage.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+          
+          {/* Domain Breakdown */}
+          <div className="p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Domain Breakdown</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {domainScores.map((domain, index) => (
+                <div key={index} className="bg-gray-50 rounded-xl p-6">
+                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-white text-sm font-medium mb-3 ${domain.color}`}>
+                    {domain.name}
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl font-bold text-gray-900">
+                      {domain.percentage.toFixed(0)}%
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {domain.score}/{domain.maxScore}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        domain.percentage >= 80 ? 'bg-green-500' : 
+                        domain.percentage >= 60 ? 'bg-yellow-500' : 
+                        domain.percentage >= 40 ? 'bg-orange-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${domain.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Recommendations */}
+            <div className="bg-blue-50 rounded-xl p-6 mb-8">
+              <h3 className="text-xl font-bold text-blue-900 mb-4">Key Recommendations</h3>
+              <ul className="space-y-3 text-blue-800">
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full mr-3 mt-2"></span>
+                  Implement multi-factor authentication across all user accounts
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full mr-3 mt-2"></span>
+                  Establish Infrastructure as Code practices for better consistency
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full mr-3 mt-2"></span>
+                  Set up comprehensive monitoring and alerting systems
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full mr-3 mt-2"></span>
+                  Implement cost optimization strategies and regular reviews
+                </li>
+              </ul>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={downloadPDF}
+                disabled={isDownloading}
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {isDownloading ? (
+                  <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                ) : (
+                  <Download className="h-5 w-5 mr-2" />
+                )}
+                {isDownloading ? 'Generating PDF...' : 'Download Results'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowDetailedResults(false);
+                  onComplete(finalScore);
+                }}
+                className="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const calculateScore = (answers: Record<string, string>): number => {
@@ -370,6 +502,10 @@ export default function AssessmentQuestions({ onComplete, onClose }: AssessmentQ
   const getProgressPercentage = () => {
     return ((currentQuestionIndex + 1) / questions.length) * 100;
   };
+
+  if (showDetailedResults) {
+    return renderDetailedResults();
+  }
 
   if (showScore) {
     const percentage = (finalScore / 120) * 100;
